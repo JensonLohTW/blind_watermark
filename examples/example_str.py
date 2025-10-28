@@ -1,12 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # embed string
-import numpy as np
-from blind_watermark import WaterMark
-from blind_watermark import att
-from blind_watermark.recover import estimate_crop_parameters, recover_crop
-import cv2
 import os
+import sys
+from pathlib import Path
+
+import cv2
+import numpy as np
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+BACKEND_SRC = PROJECT_ROOT / "backend"
+if str(BACKEND_SRC) not in sys.path:
+    sys.path.insert(0, str(BACKEND_SRC))
+
+from app.core.watermark import WaterMark, att
+from app.core.watermark.recover import estimate_crop_parameters, recover_crop
 
 os.chdir(os.path.dirname(__file__))
 
@@ -14,7 +22,9 @@ bwm = WaterMark(password_img=1, password_wm=1)
 bwm.read_img('pic/ori_img.jpeg')
 wm = '@guofei9987 开源万岁！'
 bwm.read_wm(wm, mode='str')
-bwm.embed('output/embedded.png')
+embedded_path = 'output/embedded.png'
+bwm.embed(embedded_path)
+base_embed = cv2.imread(embedded_path, flags=cv2.IMREAD_COLOR)
 
 len_wm = len(bwm.wm_bit)  # 解水印需要用到长度
 print('Put down the length of wm_bit {len_wm}'.format(len_wm=len_wm))
@@ -37,11 +47,11 @@ scale = 0.7
 x1, y1, x2, y2 = int(w * loc_r[0][0]), int(h * loc_r[0][1]), int(w * loc_r[1][0]), int(h * loc_r[1][1])
 
 # 截屏攻击
-att.cut_att3(input_filename='output/embedded.png', output_file_name='output/截屏攻击1.png',
+att.cut_att3(input_filename=embedded_path, output_file_name='output/截屏攻击1.png',
              loc=(x1, y1, x2, y2), scale=scale)
 
 recover_crop(template_file='output/截屏攻击1.png', output_file_name='output/截屏攻击1_还原.png',
-             loc=(x1, y1, x2, y2), image_o_shape=ori_img_shape)
+             loc=(x1, y1, x2, y2), image_o_shape=ori_img_shape, base_img=base_embed)
 
 bwm1 = WaterMark(password_wm=1, password_img=1)
 wm_extract = bwm1.extract('output/截屏攻击1_还原.png', wm_shape=len_wm, mode='str')
@@ -55,7 +65,7 @@ scale = 0.7
 x1, y1, x2, y2 = int(w * loc_r[0][0]), int(h * loc_r[0][1]), int(w * loc_r[1][0]), int(h * loc_r[1][1])
 
 print(f'Crop attack\'s real parameters: x1={x1},y1={y1},x2={x2},y2={y2}')
-att.cut_att3(input_filename='output/embedded.png', output_file_name='output/截屏攻击2.png',
+att.cut_att3(input_filename=embedded_path, output_file_name='output/截屏攻击2.png',
              loc=(x1, y1, x2, y2), scale=scale)
 
 # estimate crop attack parameters:
@@ -67,7 +77,7 @@ print(f'Crop att estimate parameters: x1={x1},y1={y1},x2={x2},y2={y2}, scale_inf
 
 # recover from attack:
 recover_crop(template_file='output/截屏攻击2.png', output_file_name='output/截屏攻击2_还原.png',
-             loc=(x1, y1, x2, y2), image_o_shape=image_o_shape)
+             loc=(x1, y1, x2, y2), image_o_shape=image_o_shape, base_img=base_embed)
 
 bwm1 = WaterMark(password_wm=1, password_img=1)
 wm_extract = bwm1.extract('output/截屏攻击2_还原.png', wm_shape=len_wm, mode='str')
@@ -78,12 +88,12 @@ assert wm == wm_extract, '提取水印和原水印不一致'
 loc_r = ((0.1, 0.2), (0.5, 0.5))
 x1, y1, x2, y2 = int(w * loc_r[0][0]), int(h * loc_r[0][1]), int(w * loc_r[1][0]), int(h * loc_r[1][1])
 
-att.cut_att3(input_filename='output/embedded.png', output_file_name='output/随机裁剪攻击.png',
+att.cut_att3(input_filename=embedded_path, output_file_name='output/随机裁剪攻击.png',
              loc=(x1, y1, x2, y2), scale=None)
 
 # recover from attack:
 recover_crop(template_file='output/随机裁剪攻击.png', output_file_name='output/随机裁剪攻击_还原.png',
-             loc=(x1, y1, x2, y2), image_o_shape=image_o_shape)
+             loc=(x1, y1, x2, y2), image_o_shape=image_o_shape, base_img=base_embed)
 
 bwm1 = WaterMark(password_wm=1, password_img=1)
 wm_extract = bwm1.extract('output/随机裁剪攻击_还原.png', wm_shape=len_wm, mode='str')
@@ -94,7 +104,7 @@ assert wm == wm_extract, '提取水印和原水印不一致'
 loc_r = ((0.1, 0.1), (0.5, 0.4))
 x1, y1, x2, y2 = int(w * loc_r[0][0]), int(h * loc_r[0][1]), int(w * loc_r[1][0]), int(h * loc_r[1][1])
 
-att.cut_att3(input_filename='output/embedded.png', output_file_name='output/随机裁剪攻击2.png',
+att.cut_att3(input_filename=embedded_path, output_file_name='output/随机裁剪攻击2.png',
              loc=(x1, y1, x2, y2), scale=None)
 
 print(f'Cut attack\'s real parameters: x1={x1},y1={y1},x2={x2},y2={y2}')
@@ -108,7 +118,7 @@ print(f'Cut attack\'s estimate parameters: x1={x1},y1={y1},x2={x2},y2={y2}. scor
 
 # recover from attack:
 recover_crop(template_file='output/随机裁剪攻击2.png', output_file_name='output/随机裁剪攻击2_还原.png',
-             loc=(x1, y1, x2, y2), image_o_shape=image_o_shape)
+             loc=(x1, y1, x2, y2), image_o_shape=image_o_shape, base_img=base_embed)
 
 bwm1 = WaterMark(password_wm=1, password_img=1)
 wm_extract = bwm1.extract('output/随机裁剪攻击2_还原.png', wm_shape=len_wm, mode='str')

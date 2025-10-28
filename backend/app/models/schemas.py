@@ -2,7 +2,7 @@
 API 請求與回應的資料模型
 """
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -28,6 +28,7 @@ class EmbedResponse(BaseModel):
     success: bool
     message: str
     watermark_length: Optional[int] = Field(None, description="實際嵌入的浮水印位元長度")
+    watermark_shape: Optional[List[int]] = Field(None, description="浮水印原始形狀（圖片模式）")
     image_data: Optional[str] = Field(None, description="Base64 編碼的嵌入後圖片")
 
 
@@ -37,6 +38,7 @@ class ExtractRequest(BaseModel):
     password_img: int = Field(1, description="圖片密碼")
     password_wm: int = Field(1, description="浮水印密碼")
     watermark_length: int = Field(..., description="浮水印位元長度")
+    watermark_shape: Optional[List[int]] = Field(None, description="浮水印位元形狀（圖片模式）")
 
 
 class ExtractResponse(BaseModel):
@@ -52,4 +54,3 @@ class ErrorResponse(BaseModel):
     success: bool = False
     error: str
     detail: Optional[str] = None
-

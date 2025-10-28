@@ -5,15 +5,20 @@ This demonstrates how to embed and extract without writing files to local file s
 The format of images is numpy.array.
 This may be useful if you want to use blind-watermark in another project.
 """
-import blind_watermark
-from blind_watermark import WaterMark
-from blind_watermark import att
-from blind_watermark.recover import estimate_crop_parameters, recover_crop
+import os
+import sys
+from pathlib import Path
+
 import cv2
 import numpy as np
-import os
 
-blind_watermark.bw_notes.close()
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+BACKEND_SRC = PROJECT_ROOT / "backend"
+if str(BACKEND_SRC) not in sys.path:
+    sys.path.insert(0, str(BACKEND_SRC))
+
+from app.core.watermark import WaterMark, att
+from app.core.watermark.recover import estimate_crop_parameters, recover_crop
 
 os.chdir(os.path.dirname(__file__))
 ori_img = cv2.imread('pic/ori_img.jpeg', flags=cv2.IMREAD_UNCHANGED)
@@ -48,7 +53,7 @@ x1, y1, x2, y2 = int(w * loc_r[0][0]), int(h * loc_r[0][1]), int(w * loc_r[1][0]
 img_attacked = att.cut_att3(input_img=embed_img, output_file_name=None, loc=(x1, y1, x2, y2), scale=scale)
 
 # 还原攻击
-img_recover = recover_crop(tem_img=img_attacked, loc=(x1, y1, x2, y2), image_o_shape=ori_img_shape)
+img_recover = recover_crop(tem_img=img_attacked, loc=(x1, y1, x2, y2), image_o_shape=ori_img_shape, base_img=embed_img)
 bwm1 = WaterMark(password_wm=1, password_img=1)
 wm_extract = bwm1.extract(embed_img=img_recover, wm_shape=len_wm, mode='str')
 print("截屏攻击={loc}，缩放攻击={resize}，并且知道攻击参数。提取结果：".format(loc=(x1, y1, x2, y2), resize=scale), wm_extract)
@@ -70,7 +75,7 @@ img_attacked = att.cut_att3(input_img=embed_img, loc=(x1, y1, x2, y2), scale=sca
 print(f'Crop att estimate parameters: x1={x1},y1={y1},x2={x2},y2={y2}, scale_infer = {scale_infer}. score={score}')
 
 # recover from attack:
-img_recover = recover_crop(tem_img=img_attacked, loc=(x1, y1, x2, y2), image_o_shape=image_o_shape)
+img_recover = recover_crop(tem_img=img_attacked, loc=(x1, y1, x2, y2), image_o_shape=image_o_shape, base_img=embed_img)
 
 bwm1 = WaterMark(password_wm=1, password_img=1)
 wm_extract = bwm1.extract(embed_img=img_recover, wm_shape=len_wm, mode='str')
@@ -85,7 +90,7 @@ img_attacked = att.cut_att3(input_img=embed_img, loc=(x1, y1, x2, y2), scale=Non
 
 # recover from attack:
 img_recover = recover_crop(tem_img=img_attacked,
-                           loc=(x1, y1, x2, y2), image_o_shape=image_o_shape)
+                           loc=(x1, y1, x2, y2), image_o_shape=image_o_shape, base_img=embed_img)
 
 bwm1 = WaterMark(password_wm=1, password_img=1)
 wm_extract = bwm1.extract(embed_img=img_recover, wm_shape=len_wm, mode='str')
@@ -109,7 +114,7 @@ print(f'Cut attack\'s estimate parameters: x1={x1},y1={y1},x2={x2},y2={y2}. scor
 
 # recover from attack:
 img_recover = recover_crop(tem_img=img_attacked,
-                           loc=(x1, y1, x2, y2), image_o_shape=image_o_shape)
+                           loc=(x1, y1, x2, y2), image_o_shape=image_o_shape, base_img=embed_img)
 
 bwm1 = WaterMark(password_wm=1, password_img=1)
 wm_extract = bwm1.extract(embed_img=img_recover, wm_shape=len_wm, mode='str')

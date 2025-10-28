@@ -1,6 +1,4 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { EmbedForm } from "@/components/embed-form";
-import { ExtractForm } from "@/components/extract-form";
+import { WatermarkWorkspace } from "@/components/watermark-workspace";
 
 export default function Home() {
   return (
@@ -15,20 +13,7 @@ export default function Home() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <Tabs defaultValue="embed" className="max-w-4xl mx-auto">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="embed">嵌入浮水印</TabsTrigger>
-            <TabsTrigger value="extract">提取浮水印</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="embed" className="mt-6">
-            <EmbedForm />
-          </TabsContent>
-
-          <TabsContent value="extract" className="mt-6">
-            <ExtractForm />
-          </TabsContent>
-        </Tabs>
+        <WatermarkWorkspace />
       </main>
 
       <footer className="border-t mt-12">

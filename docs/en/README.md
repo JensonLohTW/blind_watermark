@@ -61,7 +61,7 @@ See the [codes](/examples/example_str.py)
 
 Embed watermark:
 ```python
-from blind_watermark import WaterMark
+from app.core.watermark import WaterMark
 
 bwm1 = WaterMark(password_img=1, password_wm=1)
 bwm1.read_img('pic/ori_img.jpg')
@@ -104,7 +104,7 @@ Output:
 
 embed watermark:
 ```python
-from blind_watermark import WaterMark
+from app.core.watermark import WaterMark
 
 bwm1 = WaterMark(password_wm=1, password_img=1)
 # read original image
@@ -143,7 +143,7 @@ wm = [True, False, True, True, True, False]
 
 Embed:
 ```python
-from blind_watermark import WaterMark
+from app.core.watermark import WaterMark
 
 bwm1 = WaterMark(password_img=1, password_wm=1)
 bwm1.read_ori_img('pic/ori_img.jpg')

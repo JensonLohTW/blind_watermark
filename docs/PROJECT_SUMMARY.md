@@ -10,7 +10,7 @@
 
 #### 1. 專案結構建立
 - 建立 `backend/` 目錄
-- 複製核心程式碼至 `backend/app/core/blind_watermark/`
+- 核心演算法調整至 `backend/app/core/watermark/`
 - 建立分層架構：API、服務、模型
 
 #### 2. FastAPI 應用程式
@@ -273,4 +273,3 @@
 ✅ **可擴展性**：模組化設計，易於擴展新功能
 
 專案已準備好進行實際使用與進一步開發。
-

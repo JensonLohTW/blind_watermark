@@ -1,7 +1,8 @@
 """
 浮水印 API 路由
 """
-from typing import Optional
+import json
+from typing import Optional, Tuple
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
@@ -47,7 +48,7 @@ async def embed_watermark(
             watermark_image_bytes = await watermark_image.read()
 
         # 呼叫服務層嵌入浮水印
-        output_bytes, wm_length = watermark_service.embed_watermark(
+        output_bytes, wm_length, wm_shape = watermark_service.embed_watermark(
             image_bytes=image_bytes,
             mode=mode.value,
             password_img=password_img,
@@ -64,6 +65,7 @@ async def embed_watermark(
             success=True,
             message="浮水印嵌入成功",
             watermark_length=wm_length,
+            watermark_shape=list(wm_shape) if wm_shape else None,
             image_data=image_base64,
         )
 
@@ -80,6 +82,7 @@ async def extract_watermark(
     password_img: int = Form(1, description="圖片密碼"),
     password_wm: int = Form(1, description="浮水印密碼"),
     watermark_length: int = Form(..., description="浮水印位元長度"),
+    watermark_shape: Optional[str] = Form(None, description="浮水印形狀（JSON array，例如 [64, 64]）"),
 ):
     """
     提取浮水印端點
@@ -93,6 +96,21 @@ async def extract_watermark(
         # 讀取圖片
         image_bytes = await image.read()
 
+        parsed_shape: Optional[Tuple[int, ...]] = None
+        if watermark_shape:
+            try:
+                shape_data = json.loads(watermark_shape)
+                if (
+                    isinstance(shape_data, list)
+                    and shape_data
+                    and all(isinstance(v, int) for v in shape_data)
+                ):
+                    parsed_shape = tuple(shape_data)
+                else:
+                    raise ValueError
+            except (json.JSONDecodeError, ValueError) as exc:
+                raise HTTPException(status_code=400, detail="watermark_shape 格式錯誤") from exc
+
         # 呼叫服務層提取浮水印
         text_result, image_result = watermark_service.extract_watermark(
             image_bytes=image_bytes,
@@ -100,6 +118,7 @@ async def extract_watermark(
             password_img=password_img,
             password_wm=password_wm,
             watermark_length=watermark_length,
+            watermark_shape=parsed_shape,
         )
 
         # 準備回應
@@ -125,4 +144,3 @@ async def extract_watermark(
 async def health_check():
     """浮水印服務健康檢查"""
     return {"status": "healthy", "service": "watermark"}
-

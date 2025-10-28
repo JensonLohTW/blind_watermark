@@ -1,10 +1,10 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to coding agents when working with this repository.
 
 ## Project Overview
 
-blind_watermark is a Python library for embedding and extracting invisible watermarks in images using DWT-DCT-SVD (Discrete Wavelet Transform, Discrete Cosine Transform, Singular Value Decomposition) algorithms. The library supports robust watermarking that survives various image attacks including rotation, cropping, scaling, brightness adjustments, and more.
+blind_watermark is a Python library for embedding and extracting invisible watermarks in images using DWT-DCT-SVD (Discrete Wavelet Transform, Discrete Cosine Transform, Singular Value Decomposition) algorithms. The library supports robust watermarking that survives rotation, cropping, scaling, brightness adjustments, and other image attacks.
 
 ## Development Commands
 
@@ -18,16 +18,16 @@ pip install -r requirements.txt
 ```
 
 ### Testing
-The project uses example files as tests. Run from the `examples/` directory:
+Example files are used as functional tests. Run from the `examples/` directory:
 ```bash
 cd examples
-python example_str.py      # Test string watermark embedding/extraction
-python example_img.py      # Test image watermark embedding/extraction
-python example_bit.py      # Test bit array watermark
-python example_no_writing.py  # Test without writing files
+python example_str.py        # String watermark embedding/extraction
+python example_img.py        # Image watermark embedding/extraction
+python example_bit.py        # Bit-array watermark
+python example_no_writing.py # In-memory workflow
 ```
 
-For test coverage (as configured in .travis.yml):
+For coverage (as configured in .travis.yml):
 ```bash
 cd examples
 coverage run -p example_no_writing.py
@@ -39,93 +39,85 @@ coverage combine
 ```
 
 ### CLI Usage
-The package installs a `blind_watermark` command:
+The CLI is exposed through a helper script (recommended) or direct module invocation:
 ```bash
-# Embed watermark
-blind_watermark --embed --pwd 1234 examples/pic/ori_img.jpeg "watermark text" examples/output/embedded.png
+# Embed watermark (script)
+./scripts/watermark_cli.sh --embed --pwd 1234 examples/pic/ori_img.jpeg "watermark text" examples/output/embedded.png
 
-# Extract watermark
-blind_watermark --extract --pwd 1234 --wm_shape 111 examples/output/embedded.png
+# Extract watermark (script)
+./scripts/watermark_cli.sh --extract --pwd 1234 --wm_shape 64 64 examples/output/embedded.png
+
+# Direct module alternative
+python -m app.core.watermark.cli.entrypoint --embed --pwd 1234 examples/pic/ori_img.jpeg "watermark text" examples/output/embedded.png
+python -m app.core.watermark.cli.entrypoint --extract --pwd 1234 --wm_shape 64 64 examples/output/embedded.png
 ```
 
 ## Architecture
 
-### Core Components
+### Core Components (located at `backend/app/core/watermark/`)
 
-**WaterMark (blind_watermark.py)**: High-level user API
-- Handles three watermark modes: 'img' (image), 'str' (text string), 'bit' (bit array)
-- Manages password-based encryption/decryption of watermarks
-- Orchestrates the embedding and extraction workflow
-- Key methods: `read_img()`, `read_wm()`, `embed()`, `extract()`
+**WaterMark (facade.py)** – High-level compatibility API  
+- Preserves familiar methods: `read_img()`, `read_wm()`, `embed()`, `extract()`  
+- Delegates to `WatermarkPipeline` while exposing `wm_bit` and `wm_size`
 
-**WaterMarkCore (bwm_core.py)**: Low-level watermarking algorithm
-- Implements DWT-DCT-SVD frequency domain operations
-- Uses 4x4 block-based processing on YUV color space
-- Channel processing: applies watermark to all 3 YUV channels
-- Two robustness parameters: `d1=36` (primary), `d2=20` (secondary) - higher values increase robustness but reduce image quality
-- Supports multiprocessing via AutoPool for performance
-- Key insight: watermark bits are embedded cyclically across all blocks, extracted values are averaged for robustness
+**WatermarkPipeline (runner/__init__.py)** – Orchestrates embed/extract workflow  
+- Coordinates `WatermarkEmbedder` and `WatermarkExtractor`  
+- Builds configuration via `WatermarkConfig` (passwords, block shape, runtime mode)
 
-**AutoPool (pool.py)**: Concurrency abstraction
-- Supports multiple execution modes: 'common' (serial), 'multithreading', 'multiprocessing', 'vectorization', 'cached'
-- Automatically falls back to multithreading on Windows (multiprocessing limitations)
-- Controlled via `processes` parameter in WaterMark constructor
+**WatermarkAlgorithm (operations/algorithm.py)** – Low-level DWT/DCT/SVD implementation  
+- Handles 4×4 block transforms and payload averaging  
+- Provides K-means helper for bit thresholding
 
-**Attack & Recovery (att.py, recover.py)**:
-- `att.py`: Functions to simulate attacks (crop, resize, rotate, brightness, salt/pepper noise, sheltering)
-- `recover.py`: Template matching algorithms to estimate attack parameters and recover original dimensions
-- `estimate_crop_parameters()`: Uses cv2.matchTemplate with scale search to infer crop/scale attack parameters
-- `recover_crop()`: Reconstructs attacked images to original dimensions for extraction
+**AutoPool (runtime/pool.py)** – Concurrency abstraction  
+- Supports `common`, `multithreading`, and `multiprocessing` execution modes  
+- Automatically falls back to multithreading on Windows
+
+**Attack & Recovery (att.py, recover.py)** – Robustness utilities  
+- `att.py` keeps legacy helpers (`cut_att3`, `salt_pepper_att`, etc.) backed by `robustness.attacks`  
+- `recover.py` exposes `estimate_crop_parameters` and `recover_crop`, with optional `base_img` overlay support
 
 ### Data Flow
 
-**Embedding**: Image (BGR) → YUV conversion → DWT on each channel → 4×4 block partition → DCT → SVD → modify singular values → inverse operations → watermarked image
+**Embedding**: BGR image → YUV conversion → DWT per channel → 4×4 block DCT → SVD modification → inverse transforms → watermarked image
 
-**Extraction**: Watermarked image → same transformation pipeline → extract bits from singular values → average across blocks and channels → decrypt with password → output watermark
-
-**Key Implementation Details**:
-- Images are padded to even dimensions before processing
-- Transparent images (4-channel) are supported - alpha channel is preserved separately
-- Watermark bits are shuffled using `np.random.RandomState(password)` for encryption
-- Block indices are shuffled with a different password for image-level security
-- Extraction uses k-means clustering on extracted values to determine bit threshold
+**Extraction**: Watermarked image → same transform pipeline → bit extraction and averaging → password-based decryption → decoded watermark
 
 ### Password System
 
 Two passwords provide dual-layer security:
-- `password_wm`: Shuffles watermark bits themselves (encryption at watermark level)
-- `password_img`: Shuffles block embedding order (encryption at image level via `random_strategy1`)
+- `password_wm`: shuffles watermark bits (payload-level encryption)
+- `password_img`: shuffles block embedding order (image-level protection)
 
 ### Watermark Capacity
 
-The number of embeddable bits is constrained by:
+Embeddable bits are constrained by:
 ```
 block_num = (ca_shape[0] // 4) * (ca_shape[1] // 4)
 ```
-where `ca_shape` is approximately half the original image dimensions after DWT. The watermark is embedded cyclically if `wm_size < block_num`.
+where `ca_shape` is half of the original image dimensions after DWT. Payload bits cycle if `wm_size < block_num`.
 
 ## Important Notes
 
-- **wm_shape requirement**: When extracting, you MUST know the watermark shape/length used during embedding. For string watermarks, save `len(bwm.wm_bit)` after embedding.
-- **Password consistency**: Both `password_img` and `password_wm` must match between embedding and extraction.
-- **Attack recovery**: For crop/scale attacks where parameters are unknown, use `estimate_crop_parameters()` followed by `recover_crop()` before extraction.
-- **YUV color space**: All processing happens in YUV to separate luminance from chrominance - watermark survives better this way.
-- **Robustness vs quality tradeoff**: Modify `self.d1` and `self.d2` in WaterMarkCore to adjust this tradeoff.
+- **wm_shape requirement**: Extraction requires the original watermark length or shape. Record `len(bwm.wm_bit)` after embedding string/bit payloads.
+- **Password consistency**: `password_img` and `password_wm` must match between embedding and extraction.
+- **Attack recovery**: For unknown crop/scale parameters, call `estimate_crop_parameters()` followed by `recover_crop()` before extraction. Supplying `base_img` improves reconstruction fidelity.
+- **YUV color space**: All processing happens in YUV to separate luminance/chrominance and improve robustness.
+- **Robustness vs quality**: Adjust `AlgorithmTuning` (`d1`, `d2`) in `backend/app/core/watermark/config.py` to balance quality and resilience.
 
 ## Related Code Patterns
 
-When implementing attack recovery workflows, follow this pattern from example_str.py:
+Example attack recovery workflow:
 ```python
 # 1. Apply attack
 att.cut_att3(input_filename='embedded.png', output_file_name='attacked.png', ...)
 
 # 2. Estimate attack parameters (if unknown)
-(x1, y1, x2, y2), shape, score, scale = estimate_crop_parameters(
+(loc, shape, score, scale) = estimate_crop_parameters(
     original_file='embedded.png', template_file='attacked.png', ...)
 
-# 3. Recover to original dimensions
+# 3. Recover to original dimensions (optionally overlay on base image)
 recover_crop(template_file='attacked.png', output_file_name='recovered.png',
-             loc=(x1, y1, x2, y2), image_o_shape=shape)
+             loc=loc, image_o_shape=shape[:2], base_img=cv2.imread('embedded.png'))
 
 # 4. Extract watermark
 wm_extract = bwm.extract('recovered.png', wm_shape=len_wm, mode='str')

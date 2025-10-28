@@ -11,7 +11,11 @@ import { Progress } from "@/components/ui/progress";
 import { WatermarkAPI } from "@/lib/services/watermark-api";
 import type { WatermarkMode } from "@/lib/types/watermark";
 
-export function EmbedForm() {
+type EmbedFormProps = {
+  onSuccess?: (payload: { mode: WatermarkMode; length: number | null; shape: number[] | null }) => void;
+};
+
+export function EmbedForm({ onSuccess }: EmbedFormProps) {
   const [mode, setMode] = useState<WatermarkMode>("str");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [watermarkImage, setWatermarkImage] = useState<File | null>(null);
@@ -23,12 +27,14 @@ export function EmbedForm() {
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [resultWmLength, setResultWmLength] = useState<number | null>(null);
+  const [resultWmShape, setResultWmShape] = useState<number[] | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setResult(null);
     setResultWmLength(null);
+    setResultWmShape(null);
 
     if (!imageFile) {
       setError("請選擇圖片檔案");
@@ -58,9 +64,19 @@ export function EmbedForm() {
         mode === "bit" ? watermarkLength : undefined
       );
 
-      if (response.success && response.image_data) {
-        setResult(`data:image/png;base64,${response.image_data}`);
-        setResultWmLength(response.watermark_length || null);
+      if (response.success) {
+        if (response.image_data) {
+          setResult(`data:image/png;base64,${response.image_data}`);
+        }
+        setResultWmLength(response.watermark_length ?? null);
+        setResultWmShape(response.watermark_shape ?? null);
+        if (onSuccess) {
+          onSuccess({
+            mode,
+            length: response.watermark_length ?? null,
+            shape: response.watermark_shape ?? null,
+          });
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "發生未知錯誤");
@@ -182,8 +198,13 @@ export function EmbedForm() {
           {result && (
             <div className="space-y-4">
               <Alert>
-                <AlertDescription>
-                  浮水印嵌入成功！浮水印位元長度：{resultWmLength}
+                <AlertDescription className="space-y-1">
+                  <div>浮水印嵌入成功！</div>
+                  <div>位元長度：{resultWmLength ?? "-"}</div>
+                  <div>
+                    浮水印形狀：
+                    {resultWmShape ? resultWmShape.join(" × ") : "無"}
+                  </div>
                 </AlertDescription>
               </Alert>
               <div className="border rounded-lg p-4">
@@ -203,4 +224,3 @@ export function EmbedForm() {
     </Card>
   );
 }
-

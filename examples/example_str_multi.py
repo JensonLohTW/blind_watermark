@@ -4,9 +4,18 @@
 demonstrate multiprocessing and multithreading
 '''
 # embed string
-from blind_watermark import WaterMark
-import cv2
 import os
+import sys
+from pathlib import Path
+
+import cv2
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+BACKEND_SRC = PROJECT_ROOT / "backend"
+if str(BACKEND_SRC) not in sys.path:
+    sys.path.insert(0, str(BACKEND_SRC))
+
+from app.core.watermark import WaterMark
 
 os.chdir(os.path.dirname(__file__))
 

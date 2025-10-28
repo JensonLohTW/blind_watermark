@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,16 +11,47 @@ import { Progress } from "@/components/ui/progress";
 import { WatermarkAPI } from "@/lib/services/watermark-api";
 import type { WatermarkMode } from "@/lib/types/watermark";
 
-export function ExtractForm() {
-  const [mode, setMode] = useState<WatermarkMode>("str");
+type ExtractFormProps = {
+  initialMode?: WatermarkMode;
+  initialLength?: number | null;
+  initialShape?: number[] | null;
+};
+
+export function ExtractForm({
+  initialMode = "str",
+  initialLength,
+  initialShape,
+}: ExtractFormProps) {
+  const [mode, setMode] = useState<WatermarkMode>(initialMode);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [watermarkLength, setWatermarkLength] = useState(0);
+  const [watermarkLength, setWatermarkLength] = useState(initialLength ?? 0);
+  const [watermarkShape, setWatermarkShape] = useState(
+    initialShape && initialShape.length ? initialShape.join("x") : ""
+  );
   const [passwordImg, setPasswordImg] = useState(1);
   const [passwordWm, setPasswordWm] = useState(1);
   const [loading, setLoading] = useState(false);
   const [resultText, setResultText] = useState<string | null>(null);
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMode(initialMode);
+  }, [initialMode]);
+
+  useEffect(() => {
+    if (initialLength != null) {
+      setWatermarkLength(initialLength);
+    }
+  }, [initialLength]);
+
+  useEffect(() => {
+    if (initialShape && initialShape.length) {
+      setWatermarkShape(initialShape.join("x"));
+    } else if (initialShape === null) {
+      setWatermarkShape("");
+    }
+  }, [initialShape]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +69,24 @@ export function ExtractForm() {
       return;
     }
 
+    let shapeArray: number[] | undefined;
+    if (mode === "img") {
+      if (!watermarkShape.trim()) {
+        setError("圖片模式需要提供浮水印形狀，如 64x64");
+        return;
+      }
+      const parts = watermarkShape
+        .split(/[,xX]/)
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .map(Number);
+      if (!parts.length || parts.some((value) => !Number.isFinite(value) || value <= 0)) {
+        setError("浮水印形狀格式錯誤，請使用 64x64 或 64,64");
+        return;
+      }
+      shapeArray = parts;
+    }
+
     setLoading(true);
 
     try {
@@ -46,7 +95,8 @@ export function ExtractForm() {
         mode,
         passwordImg,
         passwordWm,
-        watermarkLength
+        watermarkLength,
+        shapeArray
       );
 
       if (response.success) {
@@ -178,4 +228,15 @@ export function ExtractForm() {
     </Card>
   );
 }
-
+          {mode === "img" && (
+            <div className="space-y-2">
+              <Label htmlFor="extract-shape">浮水印形狀</Label>
+              <Input
+                id="extract-shape"
+                value={watermarkShape}
+                onChange={(e) => setWatermarkShape(e.target.value)}
+                placeholder="例如 64x64 或 64,64"
+                required
+              />
+            </div>
+          )}

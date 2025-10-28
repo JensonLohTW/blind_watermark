@@ -180,6 +180,7 @@ curl -X POST "http://localhost:8000/api/watermark/extract" \
   "success": true,
   "message": "浮水印嵌入成功",
   "watermark_length": 888,
+  "watermark_shape": [64, 64],
   "image_data": "base64_encoded_image..."
 }
 ```
@@ -193,6 +194,7 @@ curl -X POST "http://localhost:8000/api/watermark/extract" \
 - `password_img`：圖片密碼（需與嵌入時相同）
 - `password_wm`：浮水印密碼（需與嵌入時相同）
 - `watermark_length`：浮水印位元長度（需與嵌入時相同）
+- `watermark_shape`：浮水印圖片形狀（圖片模式需提供，例如 `[64, 64]`）
 
 **回應**：
 ```json
@@ -232,7 +234,7 @@ curl -X POST "http://localhost:8000/api/watermark/extract" \
 1. **浮水印長度**：提取時必須提供與嵌入時相同的 `watermark_length`，建議在嵌入後記錄此值
 2. **密碼一致性**：`password_img` 和 `password_wm` 必須與嵌入時完全相同
 3. **圖片格式**：支援常見圖片格式（PNG、JPEG、BMP 等）
-4. **魯棒性參數**：核心演算法使用 `d1=36`、`d2=20`，可在 `backend/app/core/blind_watermark/bwm_core.py` 調整
+4. **魯棒性參數**：核心演算法使用 `d1=36`、`d2=20`，可在 `backend/app/core/watermark/config.py` 調整 `AlgorithmTuning`
 
 ## 核心演算法
 
@@ -249,9 +251,22 @@ MIT License
 
 ## 貢獻
 
+### CLI 操作
+
+提供封裝腳本與模組兩種方式操作 CLI：
+
+```bash
+# 使用腳本（推薦）
+./scripts/watermark_cli.sh --embed --pwd 1234 examples/pic/ori_img.jpeg "watermark text" examples/output/embedded.png
+./scripts/watermark_cli.sh --extract --pwd 1234 --wm_shape 64 64 examples/output/embedded.png
+
+# 直接呼叫模組
+python -m app.core.watermark.cli.entrypoint --embed --pwd 1234 examples/pic/ori_img.jpeg "watermark text" examples/output/embedded.png
+python -m app.core.watermark.cli.entrypoint --extract --pwd 1234 --wm_shape 64 64 examples/output/embedded.png
+```
+
 歡迎提交 Issue 或 Pull Request。
 
 ## 聯絡方式
 
 如有問題或建議，請透過 GitHub Issues 聯繫。
-

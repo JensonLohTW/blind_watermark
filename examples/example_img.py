@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import os
+import sys
+from pathlib import Path
+
 import cv2
 
-from blind_watermark import WaterMark
-import os
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+BACKEND_SRC = PROJECT_ROOT / "backend"
+if str(BACKEND_SRC) not in sys.path:
+    sys.path.insert(0, str(BACKEND_SRC))
+
+from app.core.watermark import WaterMark
 
 os.chdir(os.path.dirname(__file__))
 bwm = WaterMark(password_wm=1, password_img=1)

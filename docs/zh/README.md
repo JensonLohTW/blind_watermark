@@ -58,7 +58,7 @@ blind_watermark --extract --pwd 1234 --wm_shape 111 examples/output/embedded.png
 
 嵌入水印
 ```python
-from blind_watermark import WaterMark
+from app.core.watermark import WaterMark
 
 bwm1 = WaterMark(password_img=1, password_wm=1)
 bwm1.read_img('pic/ori_img.jpg')
@@ -102,7 +102,7 @@ Output:
 
 嵌入：
 ```python
-from blind_watermark import WaterMark
+from app.core.watermark import WaterMark
 
 bwm1 = WaterMark(password_wm=1, password_img=1)
 # read original image
@@ -142,7 +142,7 @@ wm = [True, False, True, True, True, False]
 
 ```python
 # 除了嵌入图片，也可以嵌入比特类数据
-from blind_watermark import WaterMark
+from app.core.watermark import WaterMark
 
 bwm1 = WaterMark(password_img=1, password_wm=1)
 bwm1.read_ori_img('pic/ori_img.jpg')
